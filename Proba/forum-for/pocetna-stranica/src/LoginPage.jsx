@@ -16,16 +16,16 @@ function LoginPage()  {
             password:pass
         };
         axiosInstance.post('http://localhost:5000/login', loginData)
-        .then(response => {
-        const token = response.data.access_token;
-        console.log(token);
-        Cookies.set('jwt-token', token, { expires: 7, secure: true, sameSite: 'Strict' });
-        console.log("LOGGED IN");
-        navigate('/');
-        })
-        .catch(error => {
+            .then(response => {
+            const token = response.data.access_token;
+            console.log(token);
+            Cookies.set('jwt-token', token, { expires: 7, secure: true, sameSite: 'Strict' });
+            console.log("LOGGED IN");
+            navigate('/');
+            })
+            .catch(error => {
             console.error('Error during login:', error);
-        });                                 
+            });                                 
 
 
             

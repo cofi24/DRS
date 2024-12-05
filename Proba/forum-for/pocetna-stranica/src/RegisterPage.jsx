@@ -5,7 +5,7 @@ import axios from 'axios';
 function RegisterPage(){
   const[firstName,setFirstName]=useState('');
   const[lastName,setLastName]=useState('');
-  const[userName,setUserName]=useState('');
+
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [country, setCountry] = useState('');
@@ -21,7 +21,7 @@ function RegisterPage(){
         password: pass,
         first_name: firstName,
         last_name: lastName,
-        user_name:userName,
+       
         country: country,
         city: city,
         address: address,
@@ -52,9 +52,6 @@ function RegisterPage(){
             <br></br>
             <label htmlFor="lastname">Last Name</label>
             <input value={lastName} onChange={(e) => setLastName(e.target.value)} id="lastname" placeholder="Last Name" />
-            <br></br>
-            <label htmlFor="username">User Name</label>
-            <input value={userName} onChange={(e) => setUserName(e.target.value)} id="username" placeholder="User Name" />
             <br></br>
             <label htmlFor="email">Email</label>
             <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="youremail@gmail.com" id="email" />
