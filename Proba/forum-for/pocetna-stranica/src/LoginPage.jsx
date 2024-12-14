@@ -1,53 +1,61 @@
 import React, { useState } from 'react';
 import Cookies from 'js-cookie';
 import { useNavigate } from 'react-router-dom';
-import axiosInstance from './axiosInstance';    
+import axiosInstance from './axiosInstance';
+import './App.css'
+function LoginPage() {
+    const [email, setEmail] = useState('');
+    const [pass, setPass] = useState('');
+    const navigate = useNavigate();
 
-function LoginPage()  {
-    const [email,setEmail]=useState('');
-    const[pass,setPass]=useState('');
-    const navigate=useNavigate();
-
-    const handleSubmit=async(e)=>{
+    const handleSubmit = async (e) => {
         e.preventDefault();
         
-        const loginData={
-            email:email,
-            password:pass
-        };
+        const loginData = { email: email, password: pass };
         axiosInstance.post('http://localhost:5000/login', loginData)
             .then(response => {
-            const token = response.data.access_token;
-            console.log(token);
-            Cookies.set('jwt-token', token, { expires: 7, secure: true, sameSite: 'Strict' });
-            console.log("LOGGED IN");
-            navigate('/');
+                const token = response.data.access_token;
+                Cookies.set('jwt-token', token, { expires: 7, secure: true, sameSite: 'Strict' });
+                navigate('/');
             })
             .catch(error => {
-            console.error('Error during login:', error);
-            });                                 
+                console.error('Error during login:', error);
+            });
+    };
 
-
-            
-    }
     const navigateToRegister = () => {
         navigate('/register');
     };
-    return(
-        <div>
-            <h2>Login</h2>
-            <form onSubmit={handleSubmit}>
-                <label htmlFor='email'>email</label>
-                <input value={email} onChange={(e)=>setEmail(e.target.value)} type="email" placeholder="youremail@gmail.com" id="email" name="email"/>
-                <br></br>
-                <label htmlFor='password'>password</label>
-                <input value={pass} onChange={(e) => setPass(e.target.value)} type="password" placeholder="********" id="password" name="password" />
-                <br></br>
-                <button type='submit'>Login</button>
-            </form>
-            <button onClick={navigateToRegister}>Don't have account</button>
+
+    return (
+        <div className="login-page">
+            <div className="login-container">
+                <h2 className="login-title">Login</h2>
+                <form onSubmit={handleSubmit} className="login-form">
+                    <div className="form-group">
+                        <input 
+                            type="email" 
+                            placeholder="Email" 
+                            value={email} 
+                            onChange={(e) => setEmail(e.target.value)} 
+                            className="form-input" 
+                        />
+                    </div>
+                    <div className="form-group">
+                        <input 
+                            type="password" 
+                            placeholder="Password" 
+                            value={pass} 
+                            onChange={(e) => setPass(e.target.value)} 
+                            className="form-input" 
+                        />
+                    </div>
+                    <button type="submit" className="login-button">Login</button>
+                </form>
+                <p className="signup-link" onClick={navigateToRegister}>Don't have an account? Sign Up</p>
+            </div>
         </div>
-    )
-};
+    );
+}
 
 export default LoginPage;

@@ -1,10 +1,9 @@
-import logo from './logo.svg';
 import './App.css';
 
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Link,Navigate} from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
 import HomePage from './HomePage';
-import LoginPage  from './LoginPage';
+import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
 import Cookies from 'js-cookie';
 
@@ -24,26 +23,24 @@ function App() {
   return (
     <Router>
       <div>
-        <nav>
-          <ul>
-            <li>
-              <Link to="/">Početna</Link>
-              
+        <nav className="navbar">
+          <ul className="navbar-list">
+            <li className="navbar-item">
+              <Link to="/">Pocetna</Link>
             </li>
-            <li>
-            <Link to="/login">Login</Link>
+            <li className="navbar-item">
+              <Link to="/login">Login</Link>
             </li>
-            <li>
+            <li className="navbar-item">
               <Link to="/register">Register</Link>
             </li>
           </ul>
         </nav>
 
         <Routes>
-          {/* Ruta za HomePage */}
-          <Route path="/" element={<HomePage />}/> 
-          <Route path="/login" element={<LoginPage/>}/>
-          <Route path="/register" element={<RegisterPage/>}/>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
         </Routes>
       </div>
     </Router>
@@ -51,5 +48,3 @@ function App() {
 }
 
 export default App;
-
-
