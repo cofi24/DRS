@@ -5,6 +5,8 @@ import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-ro
 import HomePage from './HomePage';
 import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
+import AdminRegistrationRequests from './AdminRegistrationRequests';
+
 import Cookies from 'js-cookie';
 
 function App() {
@@ -41,6 +43,8 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/adminregistrationrequests" element={<AdminRegistrationRequests />} />
+
         </Routes>
       </div>
     </Router>

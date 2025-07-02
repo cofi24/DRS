@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import Cookies from 'js-cookie';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from './axiosInstance';
-import './App.css'
+import './App.css';
+
 function LoginPage() {
     const [email, setEmail] = useState('');
     const [pass, setPass] = useState('');
@@ -12,15 +13,22 @@ function LoginPage() {
         e.preventDefault();
         
         const loginData = { email: email, password: pass };
-        axiosInstance.post('http://localhost:5000/login', loginData)
-            .then(response => {
-                const token = response.data.access_token;
-                Cookies.set('jwt-token', token, { expires: 7, secure: true, sameSite: 'Strict' });
-                navigate('/');
-            })
-            .catch(error => {
-                console.error('Error during login:', error);
-            });
+        try {
+            const response = await axiosInstance.post('http://localhost:5000/login', loginData);
+            const token = response.data.access_token;
+            const role = response.data.role;
+
+            Cookies.set('jwt-token', token, { expires: 7, secure: true, sameSite: 'Strict' });
+
+            if (role === 'admin') {
+                navigate('/adminregistrationrequests');  // ruta za admin stranicu
+            } else {
+                navigate('/');  // home stranica za obicne korisnike
+            }
+        } catch (error) {
+            console.error('Error during login:', error);
+            // ovde mozes da prikazes poruku o gresci korisniku ako zelis
+        }
     };
 
     const navigateToRegister = () => {

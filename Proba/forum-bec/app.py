@@ -1,99 +1,460 @@
-from flask import Flask, jsonify, request, json
-from pymongo import MongoClient;
-from werkzeug.security import generate_password_hash,check_password_hash
-from bson import ObjectId
-from oracle_connect import user_registration_schema,user_login_schema 
-from jsonschema import validate, ValidationError
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token,get_jwt_identity, get_jwt
+from flask import Flask, jsonify, request
+from flask_socketio import SocketIO, emit
+from flask_mail import Mail, Message
+from pymongo import MongoClient
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from flask_cors import CORS
-import datetime
+from bson import ObjectId
+from oracle_connect import user_login_schema, user_registration_schema
 import os
-from datetime import timedelta
-
-
+import datetime
+import smtplib
+from email.message import EmailMessage
+import re
+from jsonschema import validate, ValidationError
 app = Flask(__name__)
-
-app.config['JWT_SECRET_KEY'] = 'CKCW2hEqp_4WCmxfPs4AkxSoawgGE3LTTD8f5v4hQDQiOLPO3677juBYl8NRD3kvOVGEoEjBvliRxsySxJzHpQ'
-
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+app.config['JWT_SECRET_KEY'] = 'tajni_kljuc'
 jwt = JWTManager(app)
 
-mongo_uri = os.environ.get('MONGO_URI', 'mongodb://localhost:27017/')
-client = MongoClient(mongo_uri)
-db = client['my_database']
-user_credentials = db["user_credentials"]
-user_profiles = db["user_profiles"]
+app.config.update(
+    MAIL_SERVER='smtp.gmail.com',
+    MAIL_PORT=465,
+    MAIL_USE_SSL=True,
+    MAIL_USERNAME='tomicluka713@gmail.com',
+    MAIL_PASSWORD='dlsl wefc pntp qkcd'  # ili tvoj password ako nema 2FA
+)
+
+mail = Mail(app)
+
+# MongoDB konekcija
+client = MongoClient(os.environ.get('MONGO_URI', 'mongodb://localhost:27017/'))
+db = client['forum_db']
+users = db['users']
+registration_requests = db['registration_requests']
+discussions = db['discussions']
+comments = db['comments']
+topics = db['topics']
+likes = db['likes']
+admin_user = {
+    "email": "tomicluka713@gmail.com",
+    "password": generate_password_hash("123456"),
+    "first_name": "Admin",
+    "last_name": "Forum",
+    "country" : "Srbija",
+    "address" : "Skolska 2",
+    "city" : "Novi Sad",
+    "phone" : "0641028011",
+    "role" : "admin"
+}
+
+existing_admin = users.find_one({'email': admin_user['email']})
+if not existing_admin:
+    users.insert_one(admin_user)
+    print("Admin user created!")
+else:
+    if existing_admin.get('role') != 'admin':
+        users.update_one({'_id': existing_admin['_id']}, {'$set': {'role': 'admin'}})
+        print("Admin user role updated to 'admin'.")
+    else:
+        print("Admin user already exists with 'admin' role.")
 
 
+# Pomoćna funkcija za slanje maila (možeš izmeniti SMTP ako treba)
+def send_email(to_email, subject, body):
+    try:
+        msg = Message(subject, sender=app.config['MAIL_USERNAME'], recipients=[to_email])
+        msg.body = body
+        mail.send(msg)
+    except Exception as e:
+        print(f"Greška pri slanju mejla: {e}")
+
+
+def get_current_user():
+    user_id = get_jwt_identity()
+    return users.find_one({'_id': ObjectId(user_id)})
+
+# REGISTRACIJA - šalje zahtev, ne pravi nalog odmah
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.json
+
+    print("Primljeni podaci za registraciju:")
+    print(data)
+
+    email = data.get('email')
+
+    print("Provera postojanja email-a:")
+    print("Email:", email)
+    print("Korisnik sa ovim email-om u users kolekciji:", users.find_one({'email': email}))
+    print("Zahtev sa ovim email-om u registration_requests kolekciji:", registration_requests.find_one({'email': email}))
+
+    if users.find_one({'email': email}) or registration_requests.find_one({'email': email}):
+        return jsonify({'error': 'Email already registered'}), 400
+
+    data['password'] = generate_password_hash(data['password'])
+    registration_requests.insert_one(data)
+
+    print("Podaci su ubačeni u registration_requests.")
+
+    # Obavesti admina (email & websocket)
+    send_email('tomicluka713@gmail.com', 'New Registration Request', f'New user requested registration: {email}')
+    socketio.emit('new_registration_request', {'email': email}, room=None)
+
+    return jsonify({'message': 'Registration request submitted'}), 201
+
+
+
+# ADMIN: Pregled svih zahteva za registraciju
+@app.route('/adminregistrationrequests', methods=['GET'])
+@jwt_required()
+def get_registration_requests():
+    user = get_current_user()
+    if user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    reqs = registration_requests.find()
+    result = []
+    for r in reqs:
+        r['_id'] = str(r['_id'])
+        r.pop('password')  # Ne šalji lozinku
+        result.append(r)
+    return jsonify(result), 200
+
+# ADMIN: Potvrda registracije
+@app.route('/admin/approve/<req_id>', methods=['POST'])
+@jwt_required()
+def approve_registration(req_id):
+    user = get_current_user()
+    if user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    req = registration_requests.find_one({'_id': ObjectId(req_id)})
+    if not req:
+        return jsonify({'error': 'Request not found'}), 404
+
+    req['first_login'] = True
+    user_id = users.insert_one({k: v for k, v in req.items() if k != '_id'}).inserted_id
+    registration_requests.delete_one({'_id': ObjectId(req_id)})
+    send_email(req['email'], 'Registration Approved', 'Your account has been approved.')
+    socketio.emit('registration_approved', {'req_id': req_id})
+
+    return jsonify({'message': 'User approved', 'user_id': str(user_id)}), 200
+
+# ADMIN: Odbijanje registracije
+@app.route('/admin/decline/<req_id>', methods=['POST'])
+@jwt_required()
+def decline_registration(req_id):
+    user = get_current_user()
+    if user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    req = registration_requests.find_one({'_id': ObjectId(req_id)})
+    if not req:
+        return jsonify({'error': 'Request not found'}), 404
+
+    registration_requests.delete_one({'_id': ObjectId(req_id)})
+    send_email(req['email'], 'Registration Declined', 'Your registration was declined.')
+    socketio.emit('registration_declined', {'req_id': req_id})
+
+    return jsonify({'message': 'Request declined'}), 200
+
+# LOGIN
+from jsonschema import validate, ValidationError
 
 @app.route('/login', methods=['POST'])
 def login():
+    data = request.json
+
     try:
-        validate(instance=request.json, schema=user_login_schema)
+        validate(instance=data, schema=user_login_schema)
     except ValidationError as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({'error': f'Invalid input: {e.message}'}), 400
 
-    email = request.json['email']
-    password = request.json['password']
-    user = user_credentials.find_one({"email": email})
+    user = users.find_one({'email': data['email']})
+    if not user or not check_password_hash(user['password'], data['password']):
+        return jsonify({'error': 'Invalid credentials'}), 401
 
-    if user:
-        user_details = user_profiles.find_one({"user_id": user['_id']})
+    if user.get('first_login', False):
+        send_email('admin@forum.com', 'User First Login', f"User {user['email']} logged in for the first time.")
+        users.update_one({'_id': user['_id']}, {'$set': {'first_login': False}})
 
-    if user and check_password_hash(user['password'], password):
-        expires = timedelta(days=7)
-        access_token = create_access_token(
-            identity=str(user['_id']),
-            additional_claims={"email": email, "full_name": user_details['first_name'] + " " + user_details['last_name']},
-            expires_delta=expires
-        )
-        return jsonify(access_token=access_token), 200
-    else:
-        return jsonify({"error": "Invalid credentials"}), 401
-
-
-@app.route('/register', methods=['POST'])
-def register():
-    try:
-        validate(instance=request.json, schema=user_registration_schema)
-    except ValidationError as e:
-        return jsonify({"error": str(e)}), 400
-
-    email = request.json['email']
-    password = request.json['password']
-    first_name = request.json['first_name']
-    last_name = request.json['last_name']
-    country = request.json['country']
-    address = request.json['address']
-    city = request.json['city']
-    phone = request.json['phone']
-
-    if user_credentials.find_one({"email": email}):
-        return jsonify({"error": "Email already registered"}), 400
-
-    hashed_password = generate_password_hash(password) 
-
-    user_id = user_credentials.insert_one({
-        "email": email,
-        "password": hashed_password
-    }).inserted_id
-
-    user_profiles.insert_one({
-        "email": email,
-        "user_id": user_id,
-        "first_name": first_name,
-        "last_name": last_name,
-        "country": country,
-        "address": address,
-        "city": city,
-        "phone": phone
-    })
-
-    return jsonify({"message": "User created successfully", "user_id": str(user_id)}), 201
+    access_token = create_access_token(
+        identity=str(user['_id']),
+        additional_claims={
+            'role': user.get('role', 'user'),
+            'email': user['email'],
+            'first_name': user['first_name'],
+            'last_name': user['last_name'],
+            'country': user['country'],
+            'address': user['address'],
+            'city': user['city'],
+            'phone': user['phone']
+        }
+    )
+    return jsonify({
+        'access_token': access_token,
+        'role': user.get('role', 'user')  # vrati rolu za frontend
+    }), 200
 
 
 
+# KREIRANJE, IZMENA I BRISANJE TEMA (admin samo)
+@app.route('/topics', methods=['POST'])
+@jwt_required()
+def create_topic():
+    user = get_current_user()
+    if user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    data = request.json
+    topics.insert_one(data)
+    return jsonify({'message': 'Topic created'}), 201
 
+@app.route('/topics/<topic_id>', methods=['PUT'])
+@jwt_required()
+def update_topic(topic_id):
+    user = get_current_user()
+    if user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    topics.update_one({'_id': ObjectId(topic_id)}, {'$set': request.json})
+    return jsonify({'message': 'Topic updated'}), 200
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+@app.route('/topics/<topic_id>', methods=['DELETE'])
+@jwt_required()
+def delete_topic(topic_id):
+    user = get_current_user()
+    if user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+    topics.delete_one({'_id': ObjectId(topic_id)})
+    return jsonify({'message': 'Topic deleted'}), 200
+
+# KREIRANJE, IZMENA I BRISANJE DISKUSIJA (creator ili admin)
+@app.route('/discussions', methods=['POST'])
+@jwt_required()
+def create_discussion():
+    user = get_current_user()
+    data = request.json
+    data['creator_id'] = user['_id']
+    data['timestamp'] = datetime.datetime.utcnow()
+    if 'topic_id' in data:
+        data['topic_id'] = ObjectId(data['topic_id'])
+    discussions.insert_one(data)
+
+    mentions = re.findall(r"@\\w+", data.get('content', ''))
+    for mention in mentions:
+        username = mention[1:]
+        mentioned_user = users.find_one({'username': username})
+        if mentioned_user:
+            send_email(mentioned_user['email'], 'You were mentioned', f"You were mentioned in a discussion by {user['username']}.")
+
+    return jsonify({'message': 'Discussion created'}), 201
+
+@app.route('/discussions/<discussion_id>', methods=['PUT'])
+@jwt_required()
+def update_discussion(discussion_id):
+    user = get_current_user()
+    discussion = discussions.find_one({'_id': ObjectId(discussion_id)})
+    if not discussion:
+        return jsonify({'error': 'Not found'}), 404
+    if user['role'] != 'admin' and discussion['creator_id'] != user['_id']:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    discussions.update_one({'_id': ObjectId(discussion_id)}, {'$set': request.json})
+    return jsonify({'message': 'Discussion updated'}), 200
+
+@app.route('/discussions/<discussion_id>', methods=['DELETE'])
+@jwt_required()
+def delete_discussion(discussion_id):
+    user = get_current_user()
+    discussion = discussions.find_one({'_id': ObjectId(discussion_id)})
+    if not discussion:
+        return jsonify({'error': 'Not found'}), 404
+    if user['role'] != 'admin' and discussion['creator_id'] != user['_id']:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    discussions.delete_one({'_id': ObjectId(discussion_id)})
+    # Takođe briši komentare i lajkove/dislajkove vezane za ovu diskusiju
+    comments.delete_many({'discussion_id': ObjectId(discussion_id)})
+    likes.delete_many({'discussion_id': ObjectId(discussion_id)})
+    return jsonify({'message': 'Discussion deleted'}), 200
+
+# KOMENTARI - dodavanje, brisanje (user, autor diskusije ili admin)
+@app.route('/discussions/<discussion_id>/comments', methods=['POST'])
+@jwt_required()
+def add_comment(discussion_id):
+    user = get_current_user()
+    data = request.json
+    data['discussion_id'] = ObjectId(discussion_id)
+    data['creator_id'] = user['_id']
+    data['timestamp'] = datetime.datetime.utcnow()
+    comments.insert_one(data)
+
+    mentions = re.findall(r"@\\w+", data.get('content', ''))
+    for mention in mentions:
+        username = mention[1:]
+        mentioned_user = users.find_one({'username': username})
+        if mentioned_user:
+            send_email(mentioned_user['email'], 'You were mentioned', f"You were mentioned in a comment by {user['username']}.")
+
+    return jsonify({'message': 'Comment added'}), 201
+
+@app.route('/comments/<comment_id>', methods=['DELETE'])
+@jwt_required()
+def delete_comment(comment_id):
+    user = get_current_user()
+    comment = comments.find_one({'_id': ObjectId(comment_id)})
+    if not comment:
+        return jsonify({'error': 'Comment not found'}), 404
+
+    discussion = discussions.find_one({'_id': comment['discussion_id']})
+    if user['role'] != 'admin' and comment['creator_id'] != user['_id'] and discussion['creator_id'] != user['_id']:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    comments.delete_one({'_id': ObjectId(comment_id)})
+    return jsonify({'message': 'Comment deleted'}), 200
+
+# LAJK/DISLAJK - samo 1 per user po diskusiji
+@app.route('/discussions/<discussion_id>/like', methods=['POST'])
+@jwt_required()
+def like_discussion(discussion_id):
+    user = get_current_user()
+    existing = likes.find_one({'discussion_id': ObjectId(discussion_id), 'user_id': user['_id']})
+    if existing:
+        return jsonify({'error': 'Already liked/disliked'}), 400
+
+    likes.insert_one({'discussion_id': ObjectId(discussion_id), 'user_id': user['_id'], 'value': 'like'})
+    return jsonify({'message': 'Liked'}), 201
+
+@app.route('/discussions/<discussion_id>/dislike', methods=['POST'])
+@jwt_required()
+def dislike_discussion(discussion_id):
+    user = get_current_user()
+    existing = likes.find_one({'discussion_id': ObjectId(discussion_id), 'user_id': user['_id']})
+    if existing:
+        return jsonify({'error': 'Already liked/disliked'}), 400
+
+    likes.insert_one({'discussion_id': ObjectId(discussion_id), 'user_id': user['_id'], 'value': 'dislike'})
+    return jsonify({'message': 'Disliked'}), 201
+
+# PRETRAGA DISKUSIJA (po naslovu, sadržaju, korisniku, temi)
+@app.route('/search', methods=['GET'])
+def search():
+    q = request.args.get('q', '')
+    topic_filter = request.args.get('topic')
+    user_filter = request.args.get('user')
+
+    query = {'$and': []}
+
+    if q:
+        regex = {'$regex': q, '$options': 'i'}
+        query['$and'].append({'$or': [{'title': regex}, {'content': regex}]})
+
+    if topic_filter:
+        try:
+            topic_obj_id = ObjectId(topic_filter)
+            query['$and'].append({'topic_id': topic_obj_id})
+        except:
+            pass
+
+    if user_filter:
+        user_obj = users.find_one({'username': user_filter})
+        if user_obj:
+            query['$and'].append({'creator_id': user_obj['_id']})
+
+    if not query['$and']:
+        query = {}
+
+    results = discussions.find(query).sort('timestamp', -1)
+
+    out = []
+    for d in results:
+        creator = users.find_one({'_id': d['creator_id']})
+        topic = topics.find_one({'_id': d.get('topic_id')}) if d.get('topic_id') else None
+        like_count = likes.count_documents({'discussion_id': d['_id'], 'value': 'like'})
+        dislike_count = likes.count_documents({'discussion_id': d['_id'], 'value': 'dislike'})
+        out.append({
+            'id': str(d['_id']),
+            'title': d.get('title'),
+            'content': d.get('content'),
+            'creator': creator['username'] if creator else None,
+            'topic': topic['name'] if topic else None,
+            'likes': like_count,
+            'dislikes': dislike_count,
+            'timestamp': d.get('timestamp').isoformat() if d.get('timestamp') else None
+        })
+    return jsonify(out), 200
+
+# GET rute za pregled podataka (za UI ili testiranje)
+@app.route('/users', methods=['GET'])
+@jwt_required()
+def get_users():
+    user = get_current_user()
+    if user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    all_users = users.find()
+    out = []
+    for u in all_users:
+        out.append({
+            'id': str(u['_id']),
+            'username': u['username'],
+            'email': u['email'],
+            'role': u['role'],
+        })
+    return jsonify(out), 200
+
+@app.route('/topics', methods=['GET'])
+def get_topics():
+    all_topics = topics.find()
+    out = []
+    for t in all_topics:
+        out.append({
+            'id': str(t['_id']),
+            'name': t.get('name'),
+            'description': t.get('description')
+        })
+    return jsonify(out), 200
+
+@app.route('/discussions', methods=['GET'])
+def get_discussions():
+    results = discussions.find().sort('timestamp', -1)
+    out = []
+    for d in results:
+        creator = users.find_one({'_id': d['creator_id']})
+        topic = topics.find_one({'_id': d.get('topic_id')}) if d.get('topic_id') else None
+        like_count = likes.count_documents({'discussion_id': d['_id'], 'value': 'like'})
+        dislike_count = likes.count_documents({'discussion_id': d['_id'], 'value': 'dislike'})
+        out.append({
+            'id': str(d['_id']),
+            'title': d.get('title'),
+            'content': d.get('content'),
+            'creator': creator['username'] if creator else None,
+            'topic': topic['name'] if topic else None,
+            'likes': like_count,
+            'dislikes': dislike_count,
+            'timestamp': d.get('timestamp').isoformat() if d.get('timestamp') else None
+        })
+    return jsonify(out), 200
+
+@app.route('/discussions/<discussion_id>/comments', methods=['GET'])
+def get_comments(discussion_id):
+    coms = comments.find({'discussion_id': ObjectId(discussion_id)}).sort('timestamp', 1)
+    out = []
+    for c in coms:
+        creator = users.find_one({'_id': c['creator_id']})
+        out.append({
+            'id': str(c['_id']),
+            'content': c.get('content'),
+            'creator': creator['username'] if creator else None,
+            'timestamp': c.get('timestamp').isoformat() if c.get('timestamp') else None
+        })
+    return jsonify(out), 200
+
+# Pokretanje aplikacije sa websocket podrškom
+if __name__ == '__main__':
+    #users.delete_many({})
+    #registration_requests.delete_many({})
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
