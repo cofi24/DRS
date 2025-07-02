@@ -199,6 +199,20 @@ def login():
         'access_token': access_token,
         'role': user.get('role', 'user')  # vrati rolu za frontend
     }), 200
+@app.route('/admin/approved_users', methods=['GET'])
+@jwt_required()
+def get_approved_users():
+    user = get_current_user()
+    if user['role'] != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    approved = users.find()
+    result = []
+    for u in approved:
+        u['_id'] = str(u['_id'])
+        u.pop('password', None)  # ne šalji lozinku
+        result.append(u)
+    return jsonify(result), 200
 
 
 
@@ -231,17 +245,80 @@ def delete_topic(topic_id):
     topics.delete_one({'_id': ObjectId(topic_id)})
     return jsonify({'message': 'Topic deleted'}), 200
 
+
+
+@app.route('/user/profile', methods=['GET'])
+@jwt_required()
+def get_user_profile():
+    email = request.args.get('email')
+    if not email:
+        return jsonify({'error': 'Email is required'}), 400
+
+    user = users.find_one({'email': email})
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Ne šalji lozinku nazad
+    user.pop('password', None)
+    user['_id'] = str(user['_id'])
+    return jsonify(user), 200
+
+
+
+
+@app.route('/user/profile/<email>', methods=['PUT'])
+@jwt_required()
+def update_user_profile(email):
+    current_user_id = get_jwt_identity()
+    current_user = users.find_one({'_id': ObjectId(current_user_id)})
+
+    if not current_user:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    # Dozvoli izmenu samo ako korisnik menja svoj profil ili je admin
+    if current_user['email'] != email and current_user.get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.json
+
+    # Nemoj dozvoliti izmenu emaila preko ovog endpointa, ili druge osetljive stvari
+    if 'email' in data and data['email'] != email:
+        return jsonify({'error': 'Email cannot be changed'}), 400
+
+    # Ažuriraj polja koja su prosleđena (pr. ime, prezime, telefon, itd)
+    update_data = {k: v for k, v in data.items() if k in ['first_name', 'last_name', 'phone', 'country', 'address', 'city']}
+    if not update_data:
+        return jsonify({'error': 'No valid fields to update'}), 400
+
+    users.update_one({'email': email}, {'$set': update_data})
+    return jsonify({'message': 'Profile updated'}), 200
+
+
 # KREIRANJE, IZMENA I BRISANJE DISKUSIJA (creator ili admin)
 @app.route('/discussions', methods=['POST'])
 @jwt_required()
 def create_discussion():
     user = get_current_user()
     data = request.json
+    if not data:
+        return jsonify({'error': 'No JSON body found'}), 400
+
+    print("Primljeni podaci za diskusiju:", data)
+
+    if not data.get('title') or not data.get('content'):
+        return jsonify({'error': 'Title and content are required'}), 400
+
+    try:
+        if 'topic_id' in data:
+            data['topic_id'] = ObjectId(data['topic_id'])
+    except Exception as e:
+        return jsonify({'error': f'Invalid topic_id format: {str(e)}'}), 400
+
     data['creator_id'] = user['_id']
     data['timestamp'] = datetime.datetime.utcnow()
-    if 'topic_id' in data:
-        data['topic_id'] = ObjectId(data['topic_id'])
+
     discussions.insert_one(data)
+
 
     mentions = re.findall(r"@\\w+", data.get('content', ''))
     for mention in mentions:
@@ -255,15 +332,37 @@ def create_discussion():
 @app.route('/discussions/<discussion_id>', methods=['PUT'])
 @jwt_required()
 def update_discussion(discussion_id):
-    user = get_current_user()
-    discussion = discussions.find_one({'_id': ObjectId(discussion_id)})
-    if not discussion:
-        return jsonify({'error': 'Not found'}), 404
-    if user['role'] != 'admin' and discussion['creator_id'] != user['_id']:
-        return jsonify({'error': 'Unauthorized'}), 403
+    user_id = get_jwt_identity()
+    user = users.find_one({'_id': ObjectId(user_id)})
 
-    discussions.update_one({'_id': ObjectId(discussion_id)}, {'$set': request.json})
-    return jsonify({'message': 'Discussion updated'}), 200
+    if not user:
+        return jsonify({'msg': 'Korisnik nije pronađen'}), 404
+
+    discussion = discussions.find_one({'_id': ObjectId(discussion_id)})
+
+    if not discussion:
+        return jsonify({'msg': 'Diskusija nije pronađena'}), 404
+
+    if user.get('role') != 'admin' and str(discussion.get('creator_id')) != str(user['_id']):
+        return jsonify({'msg': 'Nemate pravo da izmenite ovu diskusiju'}), 403
+
+    data = request.get_json()
+    update_data = {}
+
+    if 'title' in data:
+        update_data['title'] = data['title']
+    if 'content' in data:
+        update_data['content'] = data['content']
+    if 'topic_id' in data:
+        try:
+            update_data['topic_id'] = ObjectId(data['topic_id'])
+        except:
+            return jsonify({'msg': 'Neispravan topic_id'}), 400
+
+    discussions.update_one({'_id': ObjectId(discussion_id)}, {'$set': update_data})
+    return jsonify({'msg': 'Diskusija uspešno izmenjena'}), 200
+
+
 
 @app.route('/discussions/<discussion_id>', methods=['DELETE'])
 @jwt_required()
@@ -272,14 +371,14 @@ def delete_discussion(discussion_id):
     discussion = discussions.find_one({'_id': ObjectId(discussion_id)})
     if not discussion:
         return jsonify({'error': 'Not found'}), 404
-    if user['role'] != 'admin' and discussion['creator_id'] != user['_id']:
+    if user.get('role') != 'admin' and str(discussion.get('creator_id')) != str(user['_id']):
         return jsonify({'error': 'Unauthorized'}), 403
 
     discussions.delete_one({'_id': ObjectId(discussion_id)})
-    # Takođe briši komentare i lajkove/dislajkove vezane za ovu diskusiju
     comments.delete_many({'discussion_id': ObjectId(discussion_id)})
     likes.delete_many({'discussion_id': ObjectId(discussion_id)})
     return jsonify({'message': 'Discussion deleted'}), 200
+
 
 # KOMENTARI - dodavanje, brisanje (user, autor diskusije ili admin)
 @app.route('/discussions/<discussion_id>/comments', methods=['POST'])
@@ -423,7 +522,10 @@ def get_discussions():
     results = discussions.find().sort('timestamp', -1)
     out = []
     for d in results:
-        creator = users.find_one({'_id': d['creator_id']})
+        try:
+            creator = users.find_one({'_id': ObjectId(d['creator_id'])}) if d.get('creator_id') else None
+        except:
+            creator = None
         topic = topics.find_one({'_id': d.get('topic_id')}) if d.get('topic_id') else None
         like_count = likes.count_documents({'discussion_id': d['_id'], 'value': 'like'})
         dislike_count = likes.count_documents({'discussion_id': d['_id'], 'value': 'dislike'})
@@ -431,7 +533,7 @@ def get_discussions():
             'id': str(d['_id']),
             'title': d.get('title'),
             'content': d.get('content'),
-            'creator': creator['username'] if creator else None,
+            'creator': creator.get('email') if creator else None,
             'topic': topic['name'] if topic else None,
             'likes': like_count,
             'dislikes': dislike_count,
