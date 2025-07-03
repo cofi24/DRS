@@ -320,13 +320,12 @@ def create_discussion():
     discussions.insert_one(data)
 
 
-    mentions = re.findall(r"@\\w+", data.get('content', ''))
-    for mention in mentions:
-        username = mention[1:]
-        mentioned_user = users.find_one({'username': username})
+    mentions = re.findall(r'@([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', data.get('content', ''))
+    for mentioned_email in mentions:
+        mentioned_user = users.find_one({'email': mentioned_email})
         if mentioned_user:
-            send_email(mentioned_user['email'], 'You were mentioned', f"You were mentioned in a discussion by {user['username']}.")
-
+        # Ovo mora biti EMAIL tagovane osobe, NE admin mail
+            send_email(mentioned_user['email'], 'You were mentioned', f"You were mentioned in a post by {user['email']}.")
     return jsonify({'message': 'Discussion created'}), 201
 
 @app.route('/discussions/<discussion_id>', methods=['PUT'])
@@ -391,12 +390,13 @@ def add_comment(discussion_id):
     data['timestamp'] = datetime.datetime.utcnow()
     comments.insert_one(data)
 
-    mentions = re.findall(r"@\\w+", data.get('content', ''))
-    for mention in mentions:
-        username = mention[1:]
-        mentioned_user = users.find_one({'username': username})
+    mentions = re.findall(r'@([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', data.get('content', ''))
+    for mentioned_email in mentions:
+        mentioned_user = users.find_one({'email': mentioned_email})
         if mentioned_user:
-            send_email(mentioned_user['email'], 'You were mentioned', f"You were mentioned in a comment by {user['username']}.")
+        # Ovo mora biti EMAIL tagovane osobe, NE admin mail
+            send_email(mentioned_user['email'], 'You were mentioned', f"You were mentioned in a post by {user['email']}.")
+
 
     return jsonify({'message': 'Comment added'}), 201
 
@@ -409,11 +409,17 @@ def delete_comment(comment_id):
         return jsonify({'error': 'Comment not found'}), 404
 
     discussion = discussions.find_one({'_id': comment['discussion_id']})
-    if user['role'] != 'admin' and comment['creator_id'] != user['_id'] and discussion['creator_id'] != user['_id']:
+    if not discussion:
+        return jsonify({'error': 'Discussion not found'}), 404
+
+    # Provera prava brisanja:
+    # korisnik može obrisati komentar ako je on autor diskusije ili autor komentara
+    if user['_id'] != discussion['creator_id'] and user['_id'] != comment['creator_id']:
         return jsonify({'error': 'Unauthorized'}), 403
 
     comments.delete_one({'_id': ObjectId(comment_id)})
     return jsonify({'message': 'Comment deleted'}), 200
+
 
 # LAJK/DISLAJK - samo 1 per user po diskusiji
 @app.route('/discussions/<discussion_id>/like', methods=['POST'])
@@ -421,22 +427,34 @@ def delete_comment(comment_id):
 def like_discussion(discussion_id):
     user = get_current_user()
     existing = likes.find_one({'discussion_id': ObjectId(discussion_id), 'user_id': user['_id']})
+
     if existing:
-        return jsonify({'error': 'Already liked/disliked'}), 400
+        if existing['value'] == 'like':
+            return jsonify({'error': 'Already liked'}), 400
+        else:
+            likes.update_one({'_id': existing['_id']}, {'$set': {'value': 'like'}})
+            return jsonify({'message': 'Changed to like'}), 200
 
     likes.insert_one({'discussion_id': ObjectId(discussion_id), 'user_id': user['_id'], 'value': 'like'})
     return jsonify({'message': 'Liked'}), 201
+
 
 @app.route('/discussions/<discussion_id>/dislike', methods=['POST'])
 @jwt_required()
 def dislike_discussion(discussion_id):
     user = get_current_user()
     existing = likes.find_one({'discussion_id': ObjectId(discussion_id), 'user_id': user['_id']})
+
     if existing:
-        return jsonify({'error': 'Already liked/disliked'}), 400
+        if existing['value'] == 'dislike':
+            return jsonify({'error': 'Already disliked'}), 400
+        else:
+            likes.update_one({'_id': existing['_id']}, {'$set': {'value': 'dislike'}})
+            return jsonify({'message': 'Changed to dislike'}), 200
 
     likes.insert_one({'discussion_id': ObjectId(discussion_id), 'user_id': user['_id'], 'value': 'dislike'})
     return jsonify({'message': 'Disliked'}), 201
+
 
 # PRETRAGA DISKUSIJA (po naslovu, sadržaju, korisniku, temi)
 @app.route('/search', methods=['GET'])
@@ -550,7 +568,7 @@ def get_comments(discussion_id):
         out.append({
             'id': str(c['_id']),
             'content': c.get('content'),
-            'creator': creator['username'] if creator else None,
+            'creator': creator['email'] if creator else None,
             'timestamp': c.get('timestamp').isoformat() if c.get('timestamp') else None
         })
     return jsonify(out), 200

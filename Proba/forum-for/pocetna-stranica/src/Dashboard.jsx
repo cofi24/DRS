@@ -28,7 +28,7 @@ function Dashboard() {
   };
 
   const handleEditProfile = () => {
-    navigate('/edit-profile');
+    navigate('/profile');
   };
 
   const handleDelete = async (discussionId) => {

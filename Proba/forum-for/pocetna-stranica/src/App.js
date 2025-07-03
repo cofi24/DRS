@@ -9,6 +9,7 @@ import UserProfile from './UserProfile';
 import Cookies from 'js-cookie';
 import Dashboard from './Dashboard';
 import CreateDiscussion from './CreateDiscussion';
+import DiscussionDetails from './DiscussionDetails';
 
 function App() {
   const user = JSON.parse(localStorage.getItem('user'));
@@ -54,6 +55,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/create-discussion" element={<CreateDiscussion />} />
           <Route path="/edit-discussion/:id" element={<CreateDiscussion />} />
+          <Route path="/discussion/:id" element={<DiscussionDetails />} />
           <Route
             path="/profile"
             element={
