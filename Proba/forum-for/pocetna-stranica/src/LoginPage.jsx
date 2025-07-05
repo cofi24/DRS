@@ -10,27 +10,34 @@ function LoginPage() {
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const loginData = { email: email, password: pass };
-    try {
-      const response = await axiosInstance.post('http://localhost:5000/login', loginData);
-      const token = response.data.access_token;
-      const role = response.data.role;
+  const loginData = { email: email, password: pass };
 
-      Cookies.set('jwt-token', token, { expires: 7, secure: true, sameSite: 'Strict' });
-      localStorage.setItem('user', JSON.stringify({ email, role }));
+  try {
+    const response = await axiosInstance.post('http://localhost:5000/login', loginData);
+    const token = response.data.access_token;
+    const role = response.data.role;
 
-      if (role === 'admin') {
-        navigate('/adminregistrationrequests');
-      } else {
-        navigate('/dashboard');
-      }
-    } catch (error) {
-      console.error('Error during login:', error);
-      alert('Login failed. Please check your credentials.');
+    if (!token || !role) {
+      alert('Login failed: invalid response from server.');
+      return;
     }
-  };
+
+    Cookies.set('jwt-token', token, { expires: 7, secure: true, sameSite: 'Strict' });
+    localStorage.setItem('user', JSON.stringify({ email, role }));
+
+    if (role === 'admin') {
+      navigate('/adminregistrationrequests');
+    } else {
+      navigate('/dashboard');
+    }
+  } catch (error) {
+    console.error('Error during login:', error);
+    alert('Login failed. Please check your credentials.');
+  }
+};
+
 
   const navigateToRegister = () => {
     navigate('/register');

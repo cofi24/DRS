@@ -7,48 +7,44 @@ function Dashboard() {
   const navigate = useNavigate();
   const [discussions, setDiscussions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const fetchDiscussions = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get('http://localhost:5000/search', {
+        params: { q: searchQuery }
+      });
+      setDiscussions(res.data);
+    } catch (error) {
+      console.error('Greška pri učitavanju diskusija:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDiscussions = async () => {
-      try {
-        const res = await axios.get('http://localhost:5000/discussions');
-        setDiscussions(res.data);
-      } catch (error) {
-        console.error('Greška pri učitavanju diskusija:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const debounce = setTimeout(() => {
+      fetchDiscussions();
+    }, 400);
+    return () => clearTimeout(debounce);
+  }, [searchQuery]);
 
-    fetchDiscussions();
-  }, []);
-
-  const handleNewPost = () => {
-    navigate('/create-discussion');
-  };
-
-  const handleEditProfile = () => {
-    navigate('/profile');
-  };
+  const handleNewPost = () => navigate('/create-discussion');
+  const handleEditProfile = () => navigate('/profile');
 
   const handleDelete = async (discussionId) => {
-  if (!window.confirm('Da li ste sigurni da želite da obrišete ovu diskusiju?')) return;
-
-  try {
-    const token = Cookies.get('jwt-token');
-    await axios.delete(`http://localhost:5000/discussions/${discussionId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-
-    setDiscussions(discussions.filter(d => d.id !== discussionId));
-  } catch (error) {
-    console.error('Greška pri brisanju diskusije:', error);
-    alert('Greška pri brisanju.');
-  }
-};
-
+    if (!window.confirm('Obrisati diskusiju?')) return;
+    try {
+      const token = Cookies.get('jwt-token');
+      await axios.delete(`http://localhost:5000/discussions/${discussionId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDiscussions(discussions.filter(d => d.id !== discussionId));
+    } catch (error) {
+      console.error('Greška pri brisanju diskusije:', error);
+    }
+  };
 
   return (
     <div style={{ padding: 20 }}>
@@ -56,26 +52,34 @@ function Dashboard() {
       <button onClick={handleNewPost} style={{ marginRight: 10 }}>Nova objava</button>
       <button onClick={handleEditProfile}>Izmeni profil</button>
 
-      <h2 style={{ marginTop: 30 }}>Diskusije</h2>
+      <h2 style={{ marginTop: 30 }}>Pretraga</h2>
+      <input
+        type="text"
+        placeholder="Pretraži po svemu (tema, sadržaj, email, adresa...)"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        style={{ width: '100%', padding: 8, marginBottom: 20 }}
+      />
+
+      <h2>Diskusije</h2>
       {loading ? (
         <p>Učitavanje diskusija...</p>
       ) : discussions.length === 0 ? (
         <p>Nema dostupnih diskusija.</p>
       ) : (
         <ul>
-  {discussions.map(discussion => (
-    <li key={discussion.id} style={{ marginBottom: 15, borderBottom: '1px solid #ccc', paddingBottom: 10 }}>
-      <h3>{discussion.title}</h3>
-      <p>{discussion.content.length > 200 ? discussion.content.slice(0, 200) + '...' : discussion.content}</p>
-      <p><strong>Tema:</strong> {discussion.topic || 'Nije dodeljena'}</p>
-      <p><strong>Autor:</strong> {discussion.creator || 'Nepoznato'}</p>
-      <button onClick={() => navigate(`/discussion/${discussion.id}`)}>Pogledaj detalje</button>
-      <button onClick={() => navigate(`/edit-discussion/${discussion.id}`)} style={{ marginLeft: 10 }}>Izmeni</button>
-      <button onClick={() => handleDelete(discussion.id)} style={{ marginLeft: 10, color: 'red' }}>Obriši</button>
-    </li>
-  ))}
-</ul>
-
+          {discussions.map(d => (
+            <li key={d.id} style={{ marginBottom: 15, borderBottom: '1px solid #ccc', paddingBottom: 10 }}>
+              <h3>{d.title}</h3>
+              <p>{d.content.length > 200 ? d.content.slice(0, 200) + '...' : d.content}</p>
+              <p><strong>Tema:</strong> {d.topic || 'Nije dodeljena'}</p>
+              <p><strong>Autor:</strong> {d.creator || 'Nepoznato'}</p>
+              <button onClick={() => navigate(`/discussion/${d.id}`)}>Pogledaj detalje</button>
+              <button onClick={() => navigate(`/edit-discussion/${d.id}`)} style={{ marginLeft: 10 }}>Izmeni</button>
+              <button onClick={() => handleDelete(d.id)} style={{ marginLeft: 10, color: 'red' }}>Obriši</button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

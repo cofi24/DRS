@@ -459,50 +459,74 @@ def dislike_discussion(discussion_id):
 # PRETRAGA DISKUSIJA (po naslovu, sadržaju, korisniku, temi)
 @app.route('/search', methods=['GET'])
 def search():
-    q = request.args.get('q', '')
-    topic_filter = request.args.get('topic')
-    user_filter = request.args.get('user')
+    q = request.args.get('q', '').strip()
+    if not q:
+        # Ako nema upita, vrati sve diskusije
+        results = discussions.find().sort('timestamp', -1)
+    else:
+        pipeline = [
+            {
+                "$lookup": {
+                    "from": "users",
+                    "localField": "creator_id",
+                    "foreignField": "_id",
+                    "as": "creator"
+                }
+            },
+            {
+                "$unwind": {
+                    "path": "$creator",
+                    "preserveNullAndEmptyArrays": True
+                }
+            },
+            {
+                "$lookup": {
+                    "from": "topics",
+                    "localField": "topic_id",
+                    "foreignField": "_id",
+                    "as": "topic"
+                }
+            },
+            {
+                "$unwind": {
+                    "path": "$topic",
+                    "preserveNullAndEmptyArrays": True
+                }
+            },
+            {
+                "$match": {
+                    "$or": [
+                        {"title": {"$regex": q, "$options": "i"}},
+                        {"content": {"$regex": q, "$options": "i"}},
+                        {"creator.email": {"$regex": q, "$options": "i"}},
+                        {"topic.name": {"$regex": q, "$options": "i"}}
+                    ]
+                }
+            },
+            {
+                "$sort": {"timestamp": -1}
+            }
+        ]
+        results = discussions.aggregate(pipeline)
 
-    query = {'$and': []}
-
-    if q:
-        regex = {'$regex': q, '$options': 'i'}
-        query['$and'].append({'$or': [{'title': regex}, {'content': regex}]})
-
-    if topic_filter:
-        try:
-            topic_obj_id = ObjectId(topic_filter)
-            query['$and'].append({'topic_id': topic_obj_id})
-        except:
-            pass
-
-    if user_filter:
-        user_obj = users.find_one({'username': user_filter})
-        if user_obj:
-            query['$and'].append({'creator_id': user_obj['_id']})
-
-    if not query['$and']:
-        query = {}
-
-    results = discussions.find(query).sort('timestamp', -1)
-
-    out = []
+    output = []
     for d in results:
-        creator = users.find_one({'_id': d['creator_id']})
-        topic = topics.find_one({'_id': d.get('topic_id')}) if d.get('topic_id') else None
         like_count = likes.count_documents({'discussion_id': d['_id'], 'value': 'like'})
         dislike_count = likes.count_documents({'discussion_id': d['_id'], 'value': 'dislike'})
-        out.append({
-            'id': str(d['_id']),
-            'title': d.get('title'),
-            'content': d.get('content'),
-            'creator': creator['username'] if creator else None,
-            'topic': topic['name'] if topic else None,
-            'likes': like_count,
-            'dislikes': dislike_count,
-            'timestamp': d.get('timestamp').isoformat() if d.get('timestamp') else None
+
+        output.append({
+            "id": str(d["_id"]),
+            "title": d.get("title"),
+            "content": d.get("content"),
+            "creator": d.get("creator", {}).get("email", "Nepoznato"),
+            "topic": d.get("topic", {}).get("name", "N/A"),
+            "likes": like_count,
+            "dislikes": dislike_count,
+            "timestamp": d.get("timestamp").isoformat() if d.get("timestamp") else None
         })
-    return jsonify(out), 200
+
+    return jsonify(output), 200
+
 
 # GET rute za pregled podataka (za UI ili testiranje)
 @app.route('/users', methods=['GET'])
