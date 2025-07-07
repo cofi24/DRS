@@ -460,54 +460,57 @@ def dislike_discussion(discussion_id):
 @app.route('/search', methods=['GET'])
 def search():
     q = request.args.get('q', '').strip()
-    if not q:
-        # Ako nema upita, vrati sve diskusije
-        results = discussions.find().sort('timestamp', -1)
-    else:
-        pipeline = [
-            {
-                "$lookup": {
-                    "from": "users",
-                    "localField": "creator_id",
-                    "foreignField": "_id",
-                    "as": "creator"
-                }
-            },
-            {
-                "$unwind": {
-                    "path": "$creator",
-                    "preserveNullAndEmptyArrays": True
-                }
-            },
-            {
-                "$lookup": {
-                    "from": "topics",
-                    "localField": "topic_id",
-                    "foreignField": "_id",
-                    "as": "topic"
-                }
-            },
-            {
-                "$unwind": {
-                    "path": "$topic",
-                    "preserveNullAndEmptyArrays": True
-                }
-            },
-            {
-                "$match": {
-                    "$or": [
-                        {"title": {"$regex": q, "$options": "i"}},
-                        {"content": {"$regex": q, "$options": "i"}},
-                        {"creator.email": {"$regex": q, "$options": "i"}},
-                        {"topic.name": {"$regex": q, "$options": "i"}}
-                    ]
-                }
-            },
-            {
-                "$sort": {"timestamp": -1}
+
+    # Pipeline za spajanje sa korisnicima i temama
+    pipeline = [
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "creator_id",
+                "foreignField": "_id",
+                "as": "creator"
             }
-        ]
-        results = discussions.aggregate(pipeline)
+        },
+        {
+            "$unwind": {
+                "path": "$creator",
+                "preserveNullAndEmptyArrays": True
+            }
+        },
+        {
+            "$lookup": {
+                "from": "topics",
+                "localField": "topic_id",
+                "foreignField": "_id",
+                "as": "topic"
+            }
+        },
+        {
+            "$unwind": {
+                "path": "$topic",
+                "preserveNullAndEmptyArrays": True
+            }
+        }
+    ]
+
+    if q:
+        # Dodaj filter fazu samo ako postoji upit
+        pipeline.append({
+            "$match": {
+                "$or": [
+                    {"title": {"$regex": q, "$options": "i"}},
+                    {"content": {"$regex": q, "$options": "i"}},
+                    {"creator.email": {"$regex": q, "$options": "i"}},
+                    {"topic.name": {"$regex": q, "$options": "i"}}
+                ]
+            }
+        })
+
+    pipeline.append({
+        "$sort": {"timestamp": -1}
+    })
+
+    results = discussions.aggregate(pipeline)
 
     output = []
     for d in results:
@@ -519,13 +522,14 @@ def search():
             "title": d.get("title"),
             "content": d.get("content"),
             "creator": d.get("creator", {}).get("email", "Nepoznato"),
-            "topic": d.get("topic", {}).get("name", "N/A"),
+            "topic": d.get("topic", {}).get("name", "Nije dodeljena"),
             "likes": like_count,
             "dislikes": dislike_count,
             "timestamp": d.get("timestamp").isoformat() if d.get("timestamp") else None
         })
 
     return jsonify(output), 200
+
 
 
 # GET rute za pregled podataka (za UI ili testiranje)

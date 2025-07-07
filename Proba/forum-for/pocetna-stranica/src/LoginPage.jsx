@@ -1,43 +1,45 @@
-import React, { useState } from 'react';
-import Cookies from 'js-cookie';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from './axiosInstance';
+import { UserContext } from './UserContext';
 import './App.css';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const navigate = useNavigate();
+  const { login } = useContext(UserContext);
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const loginData = { email: email, password: pass };
+    try {
+      const response = await axiosInstance.post('http://localhost:5000/login', {
+        email,
+        password: pass,
+      });
+      const token = response.data.access_token;
+      const role = response.data.role;
 
-  try {
-    const response = await axiosInstance.post('http://localhost:5000/login', loginData);
-    const token = response.data.access_token;
-    const role = response.data.role;
+      if (!token || !role) {
+        alert('Login failed: invalid response from server.');
+        return;
+      }
 
-    if (!token || !role) {
-      alert('Login failed: invalid response from server.');
-      return;
+      // Pozovi login iz contexta
+      login({ email, role }, token);
+
+      // Navigacija odmah po ulozvanju
+      if (role === 'admin') {
+        navigate('/adminregistrationrequests');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      console.error('Error during login:', error);
+      alert('Login failed. Please check your credentials.');
     }
-
-    Cookies.set('jwt-token', token, { expires: 7, secure: true, sameSite: 'Strict' });
-    localStorage.setItem('user', JSON.stringify({ email, role }));
-
-    if (role === 'admin') {
-      navigate('/adminregistrationrequests');
-    } else {
-      navigate('/dashboard');
-    }
-  } catch (error) {
-    console.error('Error during login:', error);
-    alert('Login failed. Please check your credentials.');
-  }
-};
-
+  };
 
   const navigateToRegister = () => {
     navigate('/register');
@@ -68,9 +70,13 @@ function LoginPage() {
               required
             />
           </div>
-          <button type="submit" className="login-button">Login</button>
+          <button type="submit" className="login-button">
+            Login
+          </button>
         </form>
-        <p className="signup-link" onClick={navigateToRegister}>Don't have an account? Sign Up</p>
+        <p className="signup-link" onClick={navigateToRegister}>
+          Don't have an account? Sign Up
+        </p>
       </div>
     </div>
   );

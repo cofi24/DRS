@@ -9,6 +9,17 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const user = JSON.parse(localStorage.getItem('user'));
+  const userEmail = user?.email;
+  const userRole = user?.role;
+
+  useEffect(() => {
+    const token = Cookies.get('jwt-token');
+    if (!token || !user) {
+      navigate('/login');
+    }
+  }, []);
+
   const fetchDiscussions = async () => {
     setLoading(true);
     try {
@@ -75,8 +86,16 @@ function Dashboard() {
               <p><strong>Tema:</strong> {d.topic || 'Nije dodeljena'}</p>
               <p><strong>Autor:</strong> {d.creator || 'Nepoznato'}</p>
               <button onClick={() => navigate(`/discussion/${d.id}`)}>Pogledaj detalje</button>
-              <button onClick={() => navigate(`/edit-discussion/${d.id}`)} style={{ marginLeft: 10 }}>Izmeni</button>
-              <button onClick={() => handleDelete(d.id)} style={{ marginLeft: 10, color: 'red' }}>Obriši</button>
+              {d.creator === userEmail && (
+                <button onClick={() => navigate(`/edit-discussion/${d.id}`)} style={{ marginLeft: 10 }}>
+                  Izmeni
+                </button>
+              )}
+              {(userRole === 'admin' || d.creator === userEmail) && (
+                <button onClick={() => handleDelete(d.id)} style={{ marginLeft: 10, color: 'red' }}>
+                  Obriši
+                </button>
+              )}
             </li>
           ))}
         </ul>

@@ -114,7 +114,6 @@ function AdminRegistrationRequests() {
           </li>
         ))}
       </ul>
-      <AdminTopics />
 
     </div>
   );

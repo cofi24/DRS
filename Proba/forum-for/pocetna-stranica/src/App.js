@@ -1,19 +1,19 @@
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
+import React, { useContext } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
+import { UserContext, UserProvider } from './UserContext';
+
 import HomePage from './HomePage';
 import LoginPage from './LoginPage';
 import RegisterPage from './RegisterPage';
 import AdminRegistrationRequests from './AdminRegistrationRequests';
 import AdminTopics from './AdminTopics';
 import UserProfile from './UserProfile';
-import Cookies from 'js-cookie';
 import Dashboard from './Dashboard';
 import CreateDiscussion from './CreateDiscussion';
 import DiscussionDetails from './DiscussionDetails';
 
-function App() {
-  const user = JSON.parse(localStorage.getItem('user'));
-  const token = Cookies.get('jwt-token');
+function AppRoutes() {
+  const { user, token, logout } = useContext(UserContext);
 
   const checkAuth = () => {
     return token && token !== '';
@@ -24,85 +24,138 @@ function App() {
   };
 
   const ProtectedRoute = ({ children }) => {
-    if (!checkAuth()) {
-      return <Navigate to="/login" />;
-    }
+    if (!checkAuth()) return <Navigate to="/login" replace />;
+    return children;
+  };
+
+  const AdminRoute = ({ children }) => {
+    if (!checkAuth()) return <Navigate to="/login" replace />;
+    if (!isAdmin()) return <Navigate to="/dashboard" replace />;
     return children;
   };
 
   return (
-    <Router>
-      <div>
-        <nav className="navbar">
-  <ul className="navbar-list">
-    <li className="navbar-item">
-      <Link to="/">Pocetna</Link>
-    </li>
-    <li className="navbar-item">
-      <Link to="/login">Login</Link>
-    </li>
-    <li className="navbar-item">
-      <Link to="/register">Register</Link>
-    </li>
-    {/* AdminTopics ili Profil se NE nalaze ovde više */}
-  </ul>
-</nav>
+    <>
+      <nav className="navbar">
+        <ul className="navbar-list">
+          {checkAuth() ? (
+            <>
+              <li className="navbar-item">
+                <Link to="/dashboard">Početna</Link>
+              </li>
+              {isAdmin() && (
+                <>
+                  <li className="navbar-item">
+                    <Link to="/adminregistrationrequests">Admin Zahtevi</Link>
+                  </li>
+                  <li className="navbar-item">
+                    <Link to="/admintopics">Admin Tematika</Link>
+                  </li>
+                </>
+              )}
+              <li className="navbar-item">
+                <button
+                  onClick={logout}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'red',
+                    cursor: 'pointer',
+                    padding: 0,
+                    font: 'inherit',
+                  }}
+                >
+                  Logout
+                </button>
+              </li>
+            </>
+          ) : (
+            <>
+              <li className="navbar-item">
+                <Link to="/login">Login</Link>
+              </li>
+              <li className="navbar-item">
+                <Link to="/register">Register</Link>
+              </li>
+            </>
+          )}
+        </ul>
+      </nav>
 
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/create-discussion" element={<CreateDiscussion />} />
-          <Route path="/edit-discussion/:id" element={<CreateDiscussion />} />
-          <Route path="/discussion/:id" element={<DiscussionDetails />} />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <UserProfile />
-              </ProtectedRoute>
-            }
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/create-discussion"
+          element={
+            <ProtectedRoute>
+              <CreateDiscussion />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/edit-discussion/:id"
+          element={
+            <ProtectedRoute>
+              <CreateDiscussion />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/discussion/:id"
+          element={
+            <ProtectedRoute>
+              <DiscussionDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <UserProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admintopics"
+          element={
+            <AdminRoute>
+              <AdminTopics />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/adminregistrationrequests"
+          element={
+            <AdminRoute>
+              <AdminRegistrationRequests />
+            </AdminRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </>
+  );
+}
 
-          />
-          <Route
-  path="/dashboard"
-  element={
-    <ProtectedRoute>
-      <Dashboard />
-    </ProtectedRoute>
-  }
-/>
-<Route
-  path="/create-discussion"
-  element={
-    <ProtectedRoute>
-      <CreateDiscussion />
-    </ProtectedRoute>
-  }
-/>
-
-
-
-          <Route
-            path="/admintopics"
-            element={
-              <ProtectedRoute>
-                {isAdmin() ? <AdminTopics /> : <Navigate to="/" />}
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/adminregistrationrequests"
-            element={
-              <ProtectedRoute>
-                {isAdmin() ? <AdminRegistrationRequests /> : <Navigate to="/" />}
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </div>
-    </Router>
+function App() {
+  return (
+    <UserProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </UserProvider>
   );
 }
 
