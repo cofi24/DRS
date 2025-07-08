@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Cookies from 'js-cookie';
+import './Dashboard.css';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -60,8 +61,8 @@ function Dashboard() {
   return (
     <div style={{ padding: 20 }}>
       <h1>Dobrodošli!</h1>
-      <button onClick={handleNewPost} style={{ marginRight: 10 }}>Nova objava</button>
-      <button onClick={handleEditProfile}>Izmeni profil</button>
+      <button onClick={handleNewPost} className="action-button">Nova objava</button>
+      <button onClick={handleEditProfile} className="action-button">Izmeni profil</button>
 
       <h2 style={{ marginTop: 30 }}>Pretraga</h2>
       <input
@@ -69,7 +70,7 @@ function Dashboard() {
         placeholder="Pretraži po svemu (tema, sadržaj, email, adresa...)"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        style={{ width: '100%', padding: 8, marginBottom: 20 }}
+        className="search-input"
       />
 
       <h2>Diskusije</h2>
@@ -78,7 +79,7 @@ function Dashboard() {
       ) : discussions.length === 0 ? (
         <p>Nema dostupnih diskusija.</p>
       ) : (
-        <ul>
+        <ul className="discussion-list">
           {discussions.map(d => (
             <li key={d.id} style={{ marginBottom: 15, borderBottom: '1px solid #ccc', paddingBottom: 10 }}>
               <h3>{d.title}</h3>
@@ -87,12 +88,12 @@ function Dashboard() {
               <p><strong>Autor:</strong> {d.creator || 'Nepoznato'}</p>
               <button onClick={() => navigate(`/discussion/${d.id}`)}>Pogledaj detalje</button>
               {d.creator === userEmail && (
-                <button onClick={() => navigate(`/edit-discussion/${d.id}`)} style={{ marginLeft: 10 }}>
+                <button onClick={() => navigate(`/edit-discussion/${d.id}`)} >
                   Izmeni
                 </button>
               )}
               {(userRole === 'admin' || d.creator === userEmail) && (
-                <button onClick={() => handleDelete(d.id)} style={{ marginLeft: 10, color: 'red' }}>
+                <button onClick={() => handleDelete(d.id)}  className="delete-button">
                   Obriši
                 </button>
               )}

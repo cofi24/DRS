@@ -1,0 +1,67 @@
+.create-discussion-container {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 30px;
+  background-color: #f9f9f9;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  font-family: Arial, sans-serif;
+}
+
+.create-discussion-container h2 {
+  margin-bottom: 20px;
+  color: #333;
+  text-align: center;
+}
+
+.create-discussion-container form > div {
+  margin-bottom: 20px;
+}
+
+.create-discussion-container label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 6px;
+  color: #444;
+}
+
+.create-discussion-container input[type="text"],
+.create-discussion-container textarea,
+.create-discussion-container select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 15px;
+  box-sizing: border-box;
+  transition: border-color 0.3s;
+}
+
+.create-discussion-container input:focus,
+.create-discussion-container textarea:focus,
+.create-discussion-container select:focus {
+  border-color: #4CAF50;
+  outline: none;
+}
+
+.create-discussion-container button[type="submit"] {
+  background-color: #4CAF50;
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.create-discussion-container button[type="submit"]:hover {
+  background-color: #45a049;
+  transform: scale(1.02);
+}
+
+.create-discussion-container p {
+  margin: 10px 0;
+  font-weight: bold;
+  text-align: center;
+}

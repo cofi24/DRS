@@ -1,0 +1,79 @@
+.admin-container {
+  max-width: 600px;
+  margin:  auto;
+  padding: 50px 20px;
+  background-color: #f8f8f8; /* svetla sivo-plava nijansa */
+  border-radius: 50px;
+  min-height: 1000vh;
+}
+
+.add-topic-form {
+  background-color: #ffffff;
+  padding: 50px;
+  margin: 100px 0;
+  border-radius: 12px;
+  box-shadow: 0 4px 50px rgba(0, 0, 0, 0.08);
+  transition: 0.3s ease-in-out;
+  max-width: 1000px;
+}
+
+.add-topic-form:hover {
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+}
+
+.add-topic-form h3 {
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  color: #333;
+}
+
+.add-topic-form input[type="text"],
+.add-topic-form textarea {
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 15px;
+  border: 1px
+}
+
+.add-topic-form button {
+  width: 105%;
+  padding: 12px 20px;
+  margin-top: 11px;
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.action-button {
+  background-color: #cccccc; 
+  color: rgb(0, 0, 0);
+  border: aqua;
+  padding: 10px 20px;
+  margin-right: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.topic-item{
+  background-color: #ffffff;
+  padding: 50px;
+  margin: 100px 0;
+  border-radius: 12px;
+  box-shadow: 0 4px 50px rgba(0, 0, 0, 0.08);
+  transition: 0.3s ease-in-out;
+  max-width: 1000px;
+}
+.topic-item-form input[type="text"],
+.topic-item-form textarea {
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 15px;
+  border: 1px
+}

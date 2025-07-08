@@ -8,6 +8,9 @@ import AdminTopics from './AdminTopics';
 const socket = io('http://localhost:5000');
 
 function AdminRegistrationRequests() {
+  
+
+  
   const [requests, setRequests] = useState([]);
   const [approvedUsers, setApprovedUsers] = useState([]);
 
@@ -20,6 +23,7 @@ function AdminRegistrationRequests() {
     } catch (error) {
       console.error('Failed to fetch registration requests', error);
     }
+    
   };
 
   // Fetch all approved users
@@ -78,6 +82,7 @@ function AdminRegistrationRequests() {
   };
 
   return (
+    
     <div className="admin-requests-container">
       <h2>Registration Requests</h2>
       {requests.length === 0 && <p>No pending requests.</p>}
@@ -114,8 +119,8 @@ function AdminRegistrationRequests() {
           </li>
         ))}
       </ul>
-
-    </div>
+    </div>    
+    
   );
 }
 

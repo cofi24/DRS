@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Cookies from 'js-cookie';
 import { useParams, useNavigate } from 'react-router-dom';
+import './CreateDiscussion.css';
 
 function CreateOrEditDiscussion() {
   const [title, setTitle] = useState('');

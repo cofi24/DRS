@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axiosInstance from './axiosInstance';
 import { useNavigate } from 'react-router-dom';
+import './AdminTopics.css';
+
 
 function AdminTopics() {
   const [topics, setTopics] = useState([]);
@@ -80,11 +82,13 @@ function AdminTopics() {
   };
 
   return (
-    <div style={{ maxWidth: '600px', margin: 'auto' }}>
+    <div className="admin-container">
+      
       <h2>Admin Topics Management</h2>
 
       {/* Dodavanje nove teme */}
-      <div style={{ marginBottom: '20px' }}>
+      <div className="add-topic-form">
+
         <input
           type="text"
           placeholder="Name"
@@ -101,11 +105,12 @@ function AdminTopics() {
         />
         <button onClick={handleAddTopic}>Add Topic</button>
       </div>
-
+      <div className="topic-item-form">
       {/* Lista tema */}
       <ul>
         {topics.map(topic => (
-          <li key={topic.id} style={{ marginBottom: '10px' }}>
+          <li key={topic.id} className="topic-item">
+            
             {editTopicId === topic.id ? (
               <>
                 <input
@@ -120,20 +125,21 @@ function AdminTopics() {
                   value={editTopicData.description}
                   onChange={e => setEditTopicData({ ...editTopicData, description: e.target.value })}
                 />
-                <button onClick={saveEdit}>Save</button>
-                <button onClick={cancelEdit}>Cancel</button>
+                <button onClick={saveEdit} className="action-button">Save</button>
+                <button onClick={cancelEdit} className="action-button">Cancel</button>
               </>
             ) : (
               <>
                 <strong>{topic.name}</strong><br />
                 <em>{topic.description}</em><br />
-                <button onClick={() => startEdit(topic)}>Edit</button>
-                <button onClick={() => handleDeleteTopic(topic.id)}>Delete</button>
+                <button onClick={() => startEdit(topic)} className="action-button">Edit</button>
+                <button onClick={() => handleDeleteTopic(topic.id)} className="action-button"                            >Delete</button>
               </>
             )}
           </li>
         ))}
       </ul>
+      </div>
     </div>
   );
 }
