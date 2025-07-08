@@ -35,55 +35,67 @@ function UserProfile() {
     }
   };
 
-  return (
-    <div style={{ maxWidth: '600px', margin: 'auto' }}>
-      <h2>Your Profile</h2>
+return (
+        <div className="user-profile-container">
+            <h2>Tvoj profil</h2>
 
-      <label>First Name:</label><br />
-      <input
-        type="text"
-        name="first_name"
-        value={userData.first_name}
-        onChange={handleChange}
-        disabled={!isEditing}
-      /><br />
+            <div className="form-group">
+                <label>Ime:</label>
+                <input
+                    type="text"
+                    name="first_name"
+                    value={userData.first_name}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                />
+            </div>
 
-      <label>Last Name:</label><br />
-      <input
-        type="text"
-        name="last_name"
-        value={userData.last_name}
-        onChange={handleChange}
-        disabled={!isEditing}
-      /><br />
+            <div className="form-group">
+                <label>Prezime:</label>
+                <input
+                    type="text"
+                    name="last_name"
+                    value={userData.last_name}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                />
+            </div>
 
-      <label>Email:</label><br />
-      <input
-        type="email"
-        name="email"
-        value={userData.email}
-        disabled
-      /><br />
+            <div className="form-group">
+                <label>Email:</label>
+                <input
+                    type="email"
+                    name="email"
+                    value={userData.email}
+                    disabled
+                />
+            </div>
 
-      <label>Phone:</label><br />
-      <input
-        type="text"
-        name="phone"
-        value={userData.phone}
-        onChange={handleChange}
-        disabled={!isEditing}
-      /><br />
+            <div className="form-group">
+                <label>Telefon:</label>
+                <input
+                    type="text"
+                    name="phone"
+                    value={userData.phone}
+                    onChange={handleChange}
+                    disabled={!isEditing}
+                />
+            </div>
 
-      {isEditing ? (
-        <>
-          <button onClick={handleSave}>Save</button>
-          <button onClick={() => setIsEditing(false)}>Cancel</button>
-        </>
-      ) : (
-        <button onClick={() => setIsEditing(true)}>Edit Profile</button>
-      )}
-    </div>
-  );
+            <div className="button-row">
+                {isEditing ? (
+                    <>
+                        <button onClick={handleSave}>Sacuvaj</button>
+                        <button className="secondary-button" onClick={() => setIsEditing(false)}>Otkazi</button>
+                    </>
+                ) : (
+                    <button onClick={() => setIsEditing(true)}>Izmeni profil</button>
+                )}
+            </div>
+        </div>
+    );
+
 }
+
 
 export default UserProfile;

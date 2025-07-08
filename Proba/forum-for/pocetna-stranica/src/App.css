@@ -264,3 +264,177 @@ body, ul {
   background-color: #d6d6d6; /* Tamnija siva pri hoveru */
   color: #000; /* Crna boja teksta pri hoveru */
 }
+
+.user-profile-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    font-family: Arial, sans-serif;
+}
+
+    .user-profile-container h2 {
+        text-align: center;
+        margin-bottom: 30px;
+        color: #333;
+    }
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.user-profile-container label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: bold;
+    color: #555;
+}
+
+.user-profile-container input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 15px;
+    box-sizing: border-box;
+}
+
+    .user-profile-container input:disabled {
+        background-color: #eee;
+        cursor: not-allowed;
+    }
+
+.button-row {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.user-profile-container button {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    background-color: #4CAF50;
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+    .user-profile-container button:hover {
+        background-color: #45a049;
+    }
+
+.user-profile-container .secondary-button {
+    background-color: #ddd;
+    color: #333;
+}
+
+    .user-profile-container .secondary-button:hover {
+        background-color: #ccc;
+    }
+
+/* === DiscussionDetails stil === */
+.discussion-container {
+  max-width: 800px;
+  margin: 100px auto 40px auto; /* zbog fiksirane navigacije */
+  padding: 25px;
+  background-color: #f9f9f9;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  font-family: Arial, sans-serif;
+}
+
+.discussion-container h2 {
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.discussion-meta {
+  margin-bottom: 20px;
+  font-size: 15px;
+  color: #666;
+}
+
+.discussion-meta p {
+  margin: 4px 0;
+}
+
+.discussion-buttons {
+  margin-bottom: 25px;
+}
+
+.discussion-buttons button {
+  margin-right: 10px;
+  padding: 8px 16px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.discussion-buttons button:hover {
+  background-color: #45a049;
+}
+
+.comments-section {
+  margin-top: 40px;
+}
+
+.comments-section h3 {
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.comments-section ul {
+  list-style: none;
+  padding: 0;
+}
+
+.comment-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #ddd;
+}
+
+.comment-item strong {
+  color: #333;
+}
+
+.comment-item button {
+  margin-left: 10px;
+  background: none;
+  border: none;
+  color: red;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+textarea {
+  width: 100%;
+  padding: 10px;
+  font-size: 15px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  resize: vertical;
+  margin-top: 10px;
+  box-sizing: border-box;
+}
+
+.send-comment-btn {
+  margin-top: 10px;
+  padding: 10px 16px;
+  background-color: #2575fc;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.send-comment-btn:hover {
+  background-color: #1a5be0;
+}

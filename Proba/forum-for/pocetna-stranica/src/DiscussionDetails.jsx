@@ -96,49 +96,55 @@ function DiscussionDetails() {
   console.log("comments:", comments);
 
   return (
-    <div style={{ padding: 20 }}>
-      {discussion ? (
-        <>
-          <h2>{discussion.title}</h2>
-          <p>{discussion.content}</p>
+  <div className="discussion-container">
+    {discussion ? (
+      <>
+        <h2>{discussion.title}</h2>
+        <p>{discussion.content}</p>
+
+        <div className="discussion-meta">
           <p><strong>Tema:</strong> {discussion.topic}</p>
           <p><strong>Autor:</strong> {discussion.creator}</p>
           <p><strong>Likes:</strong> {discussion.likes} | <strong>Dislikes:</strong> {discussion.dislikes}</p>
-          <button onClick={() => likeDislike("like")}>👍 Like</button>
-          <button onClick={() => likeDislike("dislike")} style={{ marginLeft: 10 }}>👎 Dislike</button>
+        </div>
 
-          <h3 style={{ marginTop: 30 }}>Komentari</h3>
-          {comments.length === 0 ? <p>Nema komentara.</p> :
+        <div className="discussion-buttons">
+          <button onClick={() => likeDislike("like")}>👍 Like</button>
+          <button onClick={() => likeDislike("dislike")}>👎 Dislike</button>
+        </div>
+
+        <div className="comments-section">
+          <h3>Komentari</h3>
+          {comments.length === 0 ? (
+            <p>Nema komentara.</p>
+          ) : (
             <ul>
               {comments.map(c => (
-                <li key={c.id} style={{ marginBottom: 10 }}>
+                <li key={c.id} className="comment-item">
                   <strong>{c.creator}</strong>: {c.content}
-                  {(currentUserEmail && discussion.creator && (currentUserEmail === c.creator || currentUserEmail === discussion.creator)) && (
-                    <button
-                      onClick={() => handleDeleteComment(c.id)}
-                      style={{ marginLeft: 10, color: 'red' }}
-                    >
-                      Obriši
-                    </button>
+                  {(currentUserEmail === c.creator || currentUserEmail === discussion.creator) && (
+                    <button onClick={() => handleDeleteComment(c.id)}>Obriši</button>
                   )}
                 </li>
               ))}
             </ul>
-          }
+          )}
+        </div>
 
-          <textarea
-            rows="4"
-            cols="50"
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Unesite komentar (koristite @imeKorisnika za mention)"
-          />
-          <br />
-          <button onClick={handleCommentSubmit}>Pošalji komentar</button>
-        </>
-      ) : <p>Učitavanje...</p>}
-    </div>
-  );
+        <textarea
+          rows="4"
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          placeholder="Unesite komentar"
+        />
+        <br />
+        <button className="send-comment-btn" onClick={handleCommentSubmit}>Pošalji komentar</button>
+      </>
+    ) : (
+      <p>Učitavanje...</p>
+    )}
+  </div>
+);
 }
 
 export default DiscussionDetails;
